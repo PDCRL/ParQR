@@ -40,7 +40,7 @@ def update_makefile_for_source(source_file_name_only):
     print(f"[INFO] Makefile updated to use MAIN_SRC = {source_path_in_makefile}")
 
 def get_cpp_source_path(source_file_name_only):
-    return os.path.join("..", "src", source_file_name_only)
+    return os.path.join("..", source_file_name_only)
 
 def update_threads_in_cpp(cpp_file_path, threads):
     cmd = f"sed -i 's/^#define[[:space:]]\\+NUM_THREADS[[:space:]]\\+[0-9]\\+/#define NUM_THREADS {threads}/' {cpp_file_path}"
