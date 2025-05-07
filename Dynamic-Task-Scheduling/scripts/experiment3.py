@@ -104,7 +104,7 @@ def get_matrix_file_path_for_exe(current_rows, current_cols, abs_parqr_root_dir,
 
 def run_executable_cli(abs_parqr_root_dir, current_rows, current_cols, matrix_file_path_for_exe):
     executable_in_cwd = "./a.out" 
-    cmd_list = [executable_in_cwd, str(current_rows), str(current_cols), matrix_file_path_for_exe]
+    cmd_list = [executable_in_cwd, matrix_file_path_for_exe]
     print(f"[DEBUG] Running command (from {abs_parqr_root_dir}): {' '.join(cmd_list)}")
     try:
         result = subprocess.run(cmd_list, capture_output=True, text=True, check=True, cwd=abs_parqr_root_dir)
