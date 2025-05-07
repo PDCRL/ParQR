@@ -136,6 +136,12 @@ def run_throughput_experiment(abs_parqr_root_dir, abs_makefile_path, source_file
 # ------------------------------------------------------------------------------
 # Main Experiment Execution
 # ------------------------------------------------------------------------------
+# ... (all helper functions and global parameters from your script remain unchanged) ...
+# generate_matrix_if_needed, ALPHA_BETA_CONFIGS, FIG5_PLOT_KEYS, update_makefile, etc.
+
+# ------------------------------------------------------------------------------
+# Main Experiment Execution (Reordered for Experiment 4)
+# ------------------------------------------------------------------------------
 def main():
     script_dir = os.path.dirname(os.path.abspath(__file__))
     os.chdir(script_dir)
@@ -147,48 +153,61 @@ def main():
     if not os.path.exists(abs_executable_path):
         print(f"[INFO] Executable not found at {abs_executable_path}. Attempting initial compile...")
         compile_code_cli(abs_parqr_root_dir)
-        if not os.path.exists(abs_executable_path): print(f"[ERROR] Executable still not found at {abs_executable_path}. Exiting."); sys.exit(1)
-        else: print(f"[INFO] Executable found at {abs_executable_path} after compilation.")
-    else: print(f"[INFO] Executable found at {abs_executable_path}.")
+        if not os.path.exists(abs_executable_path): 
+            print(f"[ERROR] Executable still not found at {abs_executable_path}. Exiting.")
+            sys.exit(1)
+        else: 
+            print(f"[INFO] Executable found at {abs_executable_path} after compilation.")
+    else: 
+        print(f"[INFO] Executable found at {abs_executable_path}.")
 
-    all_run_data = []
+    all_run_data = [] # This will store data from EACH individual run (not averaged yet)
 
     for threads in thread_configs_to_run:
         print(f"\n[INFO] Starting experiments for {threads} THREADS\n" + "="*50)
-        for config_key, params in ALPHA_BETA_CONFIGS.items():
-            current_source_name = params["source_file"] # Already just the filename
-            
-            avg_times_for_this_config_threads = []
-            for cycle in range(1, runs_per_config + 1):
-                print(f"[INFO] Cycle {cycle}/{runs_per_config} | Config: {params['label']}, Threads: {threads}")
+        # Loop for each cycle (run)
+        for cycle in range(1, runs_per_config + 1):
+            print(f"[INFO] --- Cycle {cycle}/{runs_per_config} for {threads} THREADS ---")
+            # Loop through all defined Alpha/Beta configurations for this cycle
+            for config_key, params in ALPHA_BETA_CONFIGS.items():
+                current_source_name = params["source_file"]
+                
+                print(f"[INFO] Running Config: {params['label']}, Threads: {threads}")
                 time_val = run_throughput_experiment(abs_parqr_root_dir, abs_makefile_path, current_source_name, 
                                                      threads, params["prio"], params["alpha"], params["beta"])
                 print(f"  => {time_val} ms")
-                if time_val is not None: avg_times_for_this_config_threads.append(time_val)
-            
-            if avg_times_for_this_config_threads:
-                all_run_data.append({
-                    "MethodLabel": params["method_label"], 
-                    "ConfigKey": config_key, 
-                    "Threads": threads,
-                    "AvgTime_ms": np.mean(avg_times_for_this_config_threads)
-                })
-        print(f"[INFO] Completed all configurations for Threads = {threads}")
+                
+                if time_val is not None:
+                    all_run_data.append({
+                        "MethodLabel": params["method_label"], 
+                        "ConfigKey": config_key, 
+                        "Threads": threads,
+                        "Time_ms": time_val # Store individual time, not yet averaged
+                    })
+        print(f"[INFO] Completed all cycles for all configurations for Threads = {threads}")
 
-    if not all_run_data: print("[WARN] No data collected."); return
-    df_results = pd.DataFrame(all_run_data)
-    df_results["AvgTime_s"] = df_results["AvgTime_ms"] / 1000.0
+    if not all_run_data: 
+        print("[WARN] No data collected. Exiting.")
+        return
+    
+    # --- Averaging after all individual runs are collected ---
+    df_all_runs = pd.DataFrame(all_run_data)
+    # Group by the unique combination of MethodLabel, ConfigKey, and Threads, then average Time_ms
+    df_averaged_results = df_all_runs.groupby(["MethodLabel", "ConfigKey", "Threads"], as_index=False)["Time_ms"].mean()
+    df_averaged_results.rename(columns={"Time_ms": "AvgTime_ms"}, inplace=True)
+    df_averaged_results["AvgTime_s"] = df_averaged_results["AvgTime_ms"] / 1000.0
 
     results_dir = "results_throughput"
     os.makedirs(results_dir, exist_ok=True)
     csv_filename = os.path.join(results_dir, "throughput_analysis_results.csv")
-    df_results.to_csv(csv_filename, index=False)
+    df_averaged_results.to_csv(csv_filename, index=False) # Save the averaged results
     print(f"[INFO] Averaged results saved to: {os.path.abspath(csv_filename)}")
 
-    # --- Plotting ---
-    # Diagnostic plot (all collected data)
+    # --- Plotting (uses df_averaged_results) ---
+    # Diagnostic plot (all collected data, now using averaged results)
     plt.figure(figsize=(12, 7))
-    for method_label, group_data in df_results.groupby("MethodLabel"): # Group by the broader method label
+    # Group by the broader method label from the averaged data
+    for method_label, group_data in df_averaged_results.groupby("MethodLabel"): 
         plt.plot(group_data["Threads"], group_data["AvgTime_s"], marker='o', linestyle='-', label=method_label)
     plt.xlabel("Thread Count")
     plt.ylabel("Average Execution Time (s)")
@@ -196,13 +215,13 @@ def main():
     plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     plt.grid(True, which="both", ls="-")
     plt.yscale('log')
-    plt.tight_layout(rect=[0, 0, 0.80, 1]) # Adjust rect to ensure legend fits
+    plt.tight_layout(rect=[0, 0, 0.80, 1]) 
     diag_plot_path = os.path.abspath(os.path.join(results_dir, "diagnostic_throughput_all_configs.png"))
     plt.savefig(diag_plot_path, dpi=300)
     plt.close()
     print(f"[INFO] Generated diagnostic plot: {diag_plot_path}")
 
-    # Figure 5 style plot
+    # Figure 5 style plot (uses df_averaged_results)
     plt.figure(figsize=(10, 6))
     markers = {'Barrier': '^', 'Without Priority': 'o', 'With Priority': 's'}
     linestyles = {'Barrier': ':', 'Without Priority': '-', 'With Priority': '--'}
@@ -212,16 +231,16 @@ def main():
             print(f"[WARN] Config key '{target_config_key}' for paper label '{paper_label}' not found in ALPHA_BETA_CONFIGS. Skipping.")
             continue
         
-        # Use the ConfigKey to filter the DataFrame
-        subset = df_results[(df_results["ConfigKey"] == target_config_key) &
-                            (df_results["Threads"].isin(thread_configs_for_fig5_plot))]
+        # Filter the averaged DataFrame using ConfigKey
+        subset = df_averaged_results[(df_averaged_results["ConfigKey"] == target_config_key) &
+                                     (df_averaged_results["Threads"].isin(thread_configs_for_fig5_plot))]
         if not subset.empty:
             plt.plot(subset["Threads"], subset["AvgTime_s"],
                      marker=markers.get(paper_label, 'x'),
                      linestyle=linestyles.get(paper_label, '-'),
                      label=paper_label)
         else:
-            print(f"[WARN] No data for Fig5 plot: {paper_label} (using config key: {target_config_key})")
+            print(f"[WARN] No averaged data for Fig5 plot: {paper_label} (using config key: {target_config_key})")
             
     plt.xlabel("Thread Count")
     plt.ylabel("Execution Time (s)")
