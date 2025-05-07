@@ -35,119 +35,141 @@ def generate_matrix_if_needed(rows, cols, filepath, force_regenerate=False):
 # ------------------------------------------------------------------------------
 fixed_matrix_size = 8192
 runs_per_config = 3
-base_testcase_folder = "../testcase" # Relative to this script's location
-executable_name = "../a.out"        # Relative to this script's location
-makefile_name = "../Makefile"        # Relative to this script's location
-parqr_root_dir = ".."                # Path to ParQR root from script's location
+
+# --- Paths RELATIVE TO THIS SCRIPT'S LOCATION (e.g., ParQR/scripts/) ---
+base_testcase_folder_rel = "../testcase" 
+executable_name_rel = "../a.out"        
+makefile_name_rel = "../Makefile"        
+parqr_root_dir_rel = ".."                
+# --- Absolute paths will be resolved in main() or relevant functions ---
 
 # Thread configurations for data collection (dense)
-thread_configs_to_run = [2 * i for i in range(1, 53)] # 2, 4, ..., 104
+thread_configs_to_run = [4 * i for i in range(1, 27)] # 2, 4, ..., 104
 # Thread configurations for plotting Figure 5 style
 thread_configs_for_fig5_plot = [4, 24, 44, 64, 84, 100]
 
-# Alpha/Beta for this experiment (as per your original Exp4 script)
+# Alpha/Beta configurations
 # For Figure 5, the paper says "optimal alpha/beta from Exp 4.2".
 # If these (32,32) and (16,16) are NOT those optimal ones, you should adjust them
 # or add runs for the actual optimal ones (e.g., 12,12 for no-prio, 30,30 for prio).
-# For now, using the (32,32) and (16,16) as in your provided script.
 ALPHA_BETA_CONFIGS = {
-    "intel_32_np": {"alpha": 32, "beta": 32, "prio": 0, "label": "Intel 32,32 (no prio)", "method_label": "Without Priority (32,32)"},
-    "intel_32_wp": {"alpha": 32, "beta": 32, "prio": 1, "label": "Intel 32,32 (with prio)", "method_label": "With Priority (32,32)"},
-    "intel_16_np": {"alpha": 16, "beta": 16, "prio": 0, "label": "Intel 16,16 (no prio)", "method_label": "Without Priority (16,16)"},
-    "intel_16_wp": {"alpha": 16, "beta": 16, "prio": 1, "label": "Intel 16,16 (with prio)", "method_label": "With Priority (16,16)"},
-    "barrier_32":  {"alpha": 32, "beta": 32, "prio": None, "label": "Barrier 32,32", "method_label": "Barrier (32,32)"},
-    "barrier_16":  {"alpha": 16, "beta": 16, "prio": None, "label": "Barrier 16,16", "method_label": "Barrier (16,16)"}
+    "intel_32_np": {"alpha": 32, "beta": 32, "prio": 0, "source_file": "intel.cpp", "label": "Intel 32,32 (no prio)", "method_label": "Without Priority (32,32)"},
+    "intel_32_wp": {"alpha": 32, "beta": 32, "prio": 1, "source_file": "intel.cpp", "label": "Intel 32,32 (with prio)", "method_label": "With Priority (32,32)"},
+    "intel_16_np": {"alpha": 16, "beta": 16, "prio": 0, "source_file": "intel.cpp", "label": "Intel 16,16 (no prio)", "method_label": "Without Priority (16,16)"},
+    "intel_16_wp": {"alpha": 16, "beta": 16, "prio": 1, "source_file": "intel.cpp", "label": "Intel 16,16 (with prio)", "method_label": "With Priority (16,16)"},
+    "barrier_32":  {"alpha": 32, "beta": 32, "prio": None, "source_file": "barrier_main.cpp", "label": "Barrier 32,32", "method_label": "Barrier (32,32)"},
+    "barrier_16":  {"alpha": 16, "beta": 16, "prio": None, "source_file": "barrier_main.cpp", "label": "Barrier 16,16", "method_label": "Barrier (16,16)"},
+    # --- ADD OPTIMAL CONFIGS HERE IF DIFFERENT FOR FIG 5 ---
+    # Example for optimal values from Exp 4.2 (Parameter Tuning)
+    # "intel_optimal_np": {"alpha": 12, "beta": 12, "prio": 0, "source_file": "intel.cpp", "label": "Intel Optimal (no prio)", "method_label": "Without Priority (Optimal)"},
+    # "intel_optimal_wp": {"alpha": 30, "beta": 30, "prio": 1, "source_file": "intel.cpp", "label": "Intel Optimal (with prio)", "method_label": "With Priority (Optimal)"},
+    # "barrier_optimal":  {"alpha": 12, "beta": 12, "prio": None, "source_file": "barrier_main.cpp", "label": "Barrier Optimal", "method_label": "Barrier (Optimal)"},
 }
 # Which configurations to use for the main Figure 5 plot
-# Paper implies optimal alpha/beta. If (32,32) is not optimal, change these keys.
+# UPDATE THESE KEYS TO POINT TO THE "OPTIMAL" CONFIGURATIONS IF YOU ADD THEM ABOVE
 FIG5_PLOT_KEYS = {
-    "Without Priority": "intel_32_np", # Example: Use 32,32 no-prio for "Without Priority" line
-    "With Priority": "intel_32_wp",    # Example: Use 32,32 with-prio for "With Priority" line
-    "Barrier": "barrier_32"            # Example: Use 32,32 barrier for "Barrier" line
+    "Without Priority": "intel_32_np", # Change to "intel_optimal_np" if using optimal
+    "With Priority": "intel_32_wp",    # Change to "intel_optimal_wp" if using optimal
+    "Barrier": "barrier_32"            # Change to "barrier_optimal" if using optimal
 }
 
-
 # ------------------------------------------------------------------------------
-# Helper Functions (Identical to Experiment 3 script)
+# Helper Functions
 # ------------------------------------------------------------------------------
-def update_makefile(source_file_name_only):
-    source_path_in_makefile = f"{source_file_name_only}"
-    cmd = f"sed -i 's|^MAIN_SRC * =.*|MAIN_SRC = {source_path_in_makefile}|' {makefile_name}"
+def update_makefile(abs_makefile_path, source_file_name_only):
+    # MAIN_SRC in Makefile expects just the filename (e.g., intel.cpp) as .cpp files are in root
+    cmd = f"sed -i 's|^MAIN_SRC * =.*|MAIN_SRC = {source_file_name_only}|' {abs_makefile_path}"
     subprocess.run(cmd, shell=True, check=True)
-    print(f"[DEBUG] Updated Makefile to use {source_path_in_makefile}")
+    print(f"[DEBUG] Updated Makefile ({abs_makefile_path}) to use {source_file_name_only}")
 
-def update_cpp_macro(source_file_full_path, macro_name, macro_value):
+def update_cpp_macro(abs_source_file_path, macro_name, macro_value):
     regex = f"'s/^#define[[:space:]]\\+{macro_name}[[:space:]]\\+[0-9.]\\+/#define {macro_name} {macro_value}/'"
-    cmd = f"sed -i {regex} {source_file_full_path}"
+    cmd = f"sed -i {regex} {abs_source_file_path}"
     subprocess.run(cmd, shell=True, check=True)
-    print(f"[DEBUG] Updated {source_file_full_path}: {macro_name}={macro_value}")
+    print(f"[DEBUG] Updated {abs_source_file_path}: {macro_name}={macro_value}")
 
-def compile_code_cli():
+def compile_code_cli(abs_parqr_root_dir):
     print("[DEBUG] Compiling code...")
-    subprocess.run("make clean", shell=True, check=True, cwd=parqr_root_dir)
-    ret = subprocess.run("make -j", shell=True, cwd=parqr_root_dir)
+    subprocess.run("make clean", shell=True, check=True, cwd=abs_parqr_root_dir)
+    ret = subprocess.run("make -j", shell=True, cwd=abs_parqr_root_dir)
     if ret.returncode != 0: print("[ERROR] Compilation failed."); sys.exit(1)
     print("[DEBUG] Compilation succeeded.")
 
-def get_matrix_file_path(current_rows, current_cols):
-    matrix_file_abs_path = os.path.abspath(os.path.join(base_testcase_folder, f"matrix_{current_rows}x{current_cols}.txt"))
+def get_matrix_file_path_for_exe(current_rows, current_cols, abs_parqr_root_dir, rel_testcase_folder_from_root="testcase"):
+    abs_testcase_dir = os.path.join(abs_parqr_root_dir, rel_testcase_folder_from_root)
+    matrix_file_abs_path = os.path.join(abs_testcase_dir, f"matrix_{current_rows}x{current_cols}.txt")
     generate_matrix_if_needed(current_rows, current_cols, matrix_file_abs_path)
     if not os.path.exists(matrix_file_abs_path): print(f"[ERROR] Matrix file {matrix_file_abs_path} still not found."); sys.exit(1)
-    return os.path.relpath(matrix_file_abs_path, parqr_root_dir)
+    return os.path.join(rel_testcase_folder_from_root, f"matrix_{current_rows}x{current_cols}.txt")
 
-def run_executable_cli(current_rows, current_cols, matrix_file_path_for_exe):
-    cmd_list = [os.path.relpath(executable_name, parqr_root_dir), matrix_file_path_for_exe]
-    print(f"[DEBUG] Running command (from {parqr_root_dir}): {' '.join(cmd_list)}")
+def run_executable_cli(abs_parqr_root_dir, current_rows, current_cols, matrix_file_path_for_exe):
+    executable_in_cwd = "./a.out" 
+    cmd_list = [executable_in_cwd, str(current_rows), str(current_cols), matrix_file_path_for_exe]
+    print(f"[DEBUG] Running command (from {abs_parqr_root_dir}): {' '.join(cmd_list)}")
     try:
-        result = subprocess.run(cmd_list, capture_output=True, text=True, check=True, cwd=parqr_root_dir)
+        result = subprocess.run(cmd_list, capture_output=True, text=True, check=True, cwd=abs_parqr_root_dir)
     except subprocess.CalledProcessError as e:
-        print(f"[ERROR] Error running executable: {e.stdout} {e.stderr}"); return None
+        print(f"[ERROR] Error running executable. Return code: {e.returncode}"); print(f"  Stdout: {e.stdout.strip()}"); print(f"  Stderr: {e.stderr.strip()}"); return None
+    except FileNotFoundError as e:
+        print(f"[ERROR] FileNotFoundError: {e}"); print(f"  Cmd: {' '.join(cmd_list)}, CWD: {abs_parqr_root_dir}"); return None
     match = re.search(r"(?:Execution Time|Time taken):\s*([0-9.]+)\s*ms", result.stdout)
     if match: return float(match.group(1))
-    else: print("[ERROR] Time not found in output."); print("--- STDOUT ---"); print(result.stdout); print("--- STDERR ---"); print(result.stderr); return None
+    else: print("[ERROR] Time not found in output."); print("--- STDOUT ---"); print(result.stdout.strip()); print("--- STDERR ---"); print(result.stderr.strip()); return None
 
-def run_throughput_experiment(source_file_name_only, thread_count, priority_val, alpha_val, beta_val):
-    source_file_full_path = os.path.abspath(os.path.join(parqr_root_dir, source_file_name_only))
-    update_makefile(source_file_name_only)
-    update_cpp_macro(source_file_full_path, "NUM_THREADS", thread_count)
-    if priority_val is not None: # For intel.cpp
-        update_cpp_macro(source_file_full_path, "USE_PRIORITY_MAIN_QUEUE", priority_val)
-    update_cpp_macro(source_file_full_path, "ALPHA", alpha_val)
-    update_cpp_macro(source_file_full_path, "BETA", beta_val)
-    compile_code_cli()
-    matrix_file_path_for_exe = get_matrix_file_path(fixed_matrix_size, fixed_matrix_size)
-    exec_time = run_executable_cli(fixed_matrix_size, fixed_matrix_size, matrix_file_path_for_exe)
+def run_throughput_experiment(abs_parqr_root_dir, abs_makefile_path, source_file_name_only, 
+                              thread_count, priority_val, alpha_val, beta_val):
+    # .cpp files are in the abs_parqr_root_dir
+    abs_source_file_path = os.path.join(abs_parqr_root_dir, source_file_name_only)
+
+    update_makefile(abs_makefile_path, source_file_name_only) # Pass only filename
+    update_cpp_macro(abs_source_file_path, "NUM_THREADS", thread_count)
+    if priority_val is not None:
+        update_cpp_macro(abs_source_file_path, "USE_PRIORITY_MAIN_QUEUE", priority_val)
+    update_cpp_macro(abs_source_file_path, "ALPHA", alpha_val)
+    update_cpp_macro(abs_source_file_path, "BETA", beta_val)
+    
+    compile_code_cli(abs_parqr_root_dir)
+    matrix_file_for_exe = get_matrix_file_path_for_exe(fixed_matrix_size, fixed_matrix_size, abs_parqr_root_dir)
+    exec_time = run_executable_cli(abs_parqr_root_dir, fixed_matrix_size, fixed_matrix_size, matrix_file_for_exe)
     return exec_time
+
 # ------------------------------------------------------------------------------
 # Main Experiment Execution
 # ------------------------------------------------------------------------------
 def main():
-    os.chdir(os.path.dirname(os.path.abspath(__file__)))
-    if not os.path.exists(executable_name):
-        print(f"[INFO] Executable {executable_name} not found. Attempting initial compile...")
-        compile_code_cli()
-        if not os.path.exists(executable_name): print(f"[ERROR] Executable {executable_name} still not found."); sys.exit(1)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    os.chdir(script_dir)
+
+    abs_parqr_root_dir = os.path.abspath(parqr_root_dir_rel)
+    abs_executable_path = os.path.join(abs_parqr_root_dir, executable_name_rel.lstrip("../").lstrip("./"))
+    abs_makefile_path = os.path.join(abs_parqr_root_dir, makefile_name_rel.lstrip("../").lstrip("./"))
+
+    if not os.path.exists(abs_executable_path):
+        print(f"[INFO] Executable not found at {abs_executable_path}. Attempting initial compile...")
+        compile_code_cli(abs_parqr_root_dir)
+        if not os.path.exists(abs_executable_path): print(f"[ERROR] Executable still not found at {abs_executable_path}. Exiting."); sys.exit(1)
+        else: print(f"[INFO] Executable found at {abs_executable_path} after compilation.")
+    else: print(f"[INFO] Executable found at {abs_executable_path}.")
 
     all_run_data = []
-    intel_source_name = "intel.cpp"
-    barrier_source_name = "barrier_main.cpp"
 
     for threads in thread_configs_to_run:
         print(f"\n[INFO] Starting experiments for {threads} THREADS\n" + "="*50)
         for config_key, params in ALPHA_BETA_CONFIGS.items():
-            current_source_name = intel_source_name if "intel" in config_key else barrier_source_name
+            current_source_name = params["source_file"] # Already just the filename
             
             avg_times_for_this_config_threads = []
             for cycle in range(1, runs_per_config + 1):
                 print(f"[INFO] Cycle {cycle}/{runs_per_config} | Config: {params['label']}, Threads: {threads}")
-                time_val = run_throughput_experiment(current_source_name, threads, params["prio"], params["alpha"], params["beta"])
+                time_val = run_throughput_experiment(abs_parqr_root_dir, abs_makefile_path, current_source_name, 
+                                                     threads, params["prio"], params["alpha"], params["beta"])
                 print(f"  => {time_val} ms")
                 if time_val is not None: avg_times_for_this_config_threads.append(time_val)
             
             if avg_times_for_this_config_threads:
                 all_run_data.append({
-                    "MethodLabel": params["method_label"], # For easier grouping in plots
-                    "ConfigKey": config_key, # Original detailed key
+                    "MethodLabel": params["method_label"], 
+                    "ConfigKey": config_key, 
                     "Threads": threads,
                     "AvgTime_ms": np.mean(avg_times_for_this_config_threads)
                 })
@@ -161,34 +183,37 @@ def main():
     os.makedirs(results_dir, exist_ok=True)
     csv_filename = os.path.join(results_dir, "throughput_analysis_results.csv")
     df_results.to_csv(csv_filename, index=False)
-    print(f"[INFO] Averaged results: {csv_filename}")
+    print(f"[INFO] Averaged results saved to: {os.path.abspath(csv_filename)}")
 
     # --- Plotting ---
-    # Diagnostic plots (all collected data)
+    # Diagnostic plot (all collected data)
     plt.figure(figsize=(12, 7))
-    for method_label, group_data in df_results.groupby("MethodLabel"):
+    for method_label, group_data in df_results.groupby("MethodLabel"): # Group by the broader method label
         plt.plot(group_data["Threads"], group_data["AvgTime_s"], marker='o', linestyle='-', label=method_label)
     plt.xlabel("Thread Count")
     plt.ylabel("Average Execution Time (s)")
     plt.title(f"Throughput Comparison (All Configs, Matrix: {fixed_matrix_size}x{fixed_matrix_size})")
-    plt.legend(loc='upper right', bbox_to_anchor=(1.35, 1.0)) # Adjust legend position
+    plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
     plt.grid(True, which="both", ls="-")
     plt.yscale('log')
-    plt.tight_layout(rect=[0, 0, 0.85, 1]) # Adjust layout to make space for legend
-    plt.savefig(os.path.join(results_dir, "diagnostic_throughput_all_configs.png"), dpi=300)
+    plt.tight_layout(rect=[0, 0, 0.80, 1]) # Adjust rect to ensure legend fits
+    diag_plot_path = os.path.abspath(os.path.join(results_dir, "diagnostic_throughput_all_configs.png"))
+    plt.savefig(diag_plot_path, dpi=300)
     plt.close()
-    print(f"[INFO] Generated diagnostic plot: {os.path.join(results_dir, 'diagnostic_throughput_all_configs.png')}")
+    print(f"[INFO] Generated diagnostic plot: {diag_plot_path}")
 
     # Figure 5 style plot
     plt.figure(figsize=(10, 6))
     markers = {'Barrier': '^', 'Without Priority': 'o', 'With Priority': 's'}
     linestyles = {'Barrier': ':', 'Without Priority': '-', 'With Priority': '--'}
 
-    for paper_label, config_key_to_use in FIG5_PLOT_KEYS.items():
-        # Find the corresponding method_label from ALPHA_BETA_CONFIGS
-        method_label_for_plot = ALPHA_BETA_CONFIGS[config_key_to_use]["method_label"]
+    for paper_label, target_config_key in FIG5_PLOT_KEYS.items():
+        if target_config_key not in ALPHA_BETA_CONFIGS:
+            print(f"[WARN] Config key '{target_config_key}' for paper label '{paper_label}' not found in ALPHA_BETA_CONFIGS. Skipping.")
+            continue
         
-        subset = df_results[(df_results["MethodLabel"] == method_label_for_plot) &
+        # Use the ConfigKey to filter the DataFrame
+        subset = df_results[(df_results["ConfigKey"] == target_config_key) &
                             (df_results["Threads"].isin(thread_configs_for_fig5_plot))]
         if not subset.empty:
             plt.plot(subset["Threads"], subset["AvgTime_s"],
@@ -196,7 +221,7 @@ def main():
                      linestyle=linestyles.get(paper_label, '-'),
                      label=paper_label)
         else:
-            print(f"[WARN] No data for Fig5 plot: {paper_label} (using {method_label_for_plot})")
+            print(f"[WARN] No data for Fig5 plot: {paper_label} (using config key: {target_config_key})")
             
     plt.xlabel("Thread Count")
     plt.ylabel("Execution Time (s)")
@@ -206,8 +231,9 @@ def main():
     plt.yscale('log')
     plt.xticks(thread_configs_for_fig5_plot)
     plt.xlim(min(thread_configs_for_fig5_plot)-2, max(thread_configs_for_fig5_plot)+2)
-    plt.savefig(os.path.join(results_dir, "fig5_generated_throughput.png"), dpi=300)
-    print(f"[INFO] Generated Fig. 5 style plot: {os.path.join(results_dir, 'fig5_generated_throughput.png')}")
+    fig5_plot_path = os.path.abspath(os.path.join(results_dir, "fig5_generated_throughput.png"))
+    plt.savefig(fig5_plot_path, dpi=300)
+    print(f"[INFO] Generated Fig. 5 style plot: {fig5_plot_path}")
     plt.close()
 
 if __name__ == "__main__":
