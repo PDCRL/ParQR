@@ -83,7 +83,7 @@ def get_matrix_file_path(current_rows, current_cols):
 
 
 def run_executable_cli(current_rows, current_cols, matrix_file_path_for_exe):
-    cmd_list = [os.path.relpath(executable_name, parqr_root_dir), str(current_rows), str(current_cols), matrix_file_path_for_exe]
+    cmd_list = [os.path.relpath(executable_name, parqr_root_dir), matrix_file_path_for_exe]
     print(f"[DEBUG] Running command (from {parqr_root_dir}): {' '.join(cmd_list)}")
     try:
         result = subprocess.run(cmd_list, capture_output=True, text=True, check=True, cwd=parqr_root_dir)
