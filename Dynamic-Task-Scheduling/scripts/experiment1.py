@@ -26,7 +26,7 @@ RUNS_PER_CONFIG = 3  # Number of times to run each (alpha, beta) pair for averag
 
 # File and Path Settings (assuming script is in ParQR/scripts/)
 TESTCASE_FOLDER = "../testcase"
-EXECUTABLE_NAME = "../bin/QR"
+EXECUTABLE_NAME = "./a.out"
 MAKEFILE_NAME = "../Makefile"
 INTEL_SRC_FILE_NAME = "intel.cpp" # Source file for lock-free queue versions
 # BARRIER_SRC_FILE_NAME = "barrier_main.cpp" # If you also want to tune barrier
