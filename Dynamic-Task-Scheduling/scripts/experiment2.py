@@ -83,12 +83,29 @@ def get_matrix_file_path(current_rows, current_cols):
 
 
 def run_executable_cli(current_rows, current_cols, matrix_file_path_for_exe):
-    cmd_list = [os.path.relpath(executable_name, parqr_root_dir), matrix_file_path_for_exe]
+    # The executable 'a.out' is expected to be in parqr_root_dir.
+    # When cwd=parqr_root_dir, we should refer to it as './a.out'.
+    executable_in_cwd = "./a.out" # More explicit
+
+    cmd_list = [executable_in_cwd, matrix_file_path_for_exe]
+    
+    # The matrix_file_path_for_exe is already relative to parqr_root_dir
+    # (calculated in get_matrix_file_path)
+    # e.g., "testcase/matrix_300x300.txt"
+
     print(f"[DEBUG] Running command (from {parqr_root_dir}): {' '.join(cmd_list)}")
     try:
+        # cwd=parqr_root_dir means the command is run AS IF you are in the ParQR root directory.
         result = subprocess.run(cmd_list, capture_output=True, text=True, check=True, cwd=parqr_root_dir)
     except subprocess.CalledProcessError as e:
         print(f"[ERROR] Error running executable: {e.stdout} {e.stderr}")
+        return None
+    # Add this specific exception catch for FileNotFoundError
+    except FileNotFoundError as e:
+        print(f"[ERROR] FileNotFoundError when trying to run executable: {e}")
+        print(f"  Attempted to run: {' '.join(cmd_list)}")
+        print(f"  From CWD: {os.path.abspath(parqr_root_dir)}")
+        print(f"  Does '{os.path.join(os.path.abspath(parqr_root_dir), executable_in_cwd)}' exist? {os.path.exists(os.path.join(os.path.abspath(parqr_root_dir), executable_in_cwd))}")
         return None
     match = re.search(r"(?:Execution Time|Time taken):\s*([0-9.]+)\s*ms", result.stdout)
     if match:
