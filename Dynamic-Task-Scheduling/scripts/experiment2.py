@@ -49,7 +49,7 @@ ALPHA_BETA_BARRIER = {"alpha": 12, "beta": 12} # VERIFY THIS CHOICE
 # Helper Functions
 # ------------------------------------------------------------------------------
 def update_makefile(source_file_name_only):
-    source_path_in_makefile = f"src/{source_file_name_only}"
+    source_path_in_makefile = f"{source_file_name_only}"
     cmd = f"sed -i 's|^MAIN_SRC * =.*|MAIN_SRC = {source_path_in_makefile}|' {makefile_name}"
     subprocess.run(cmd, shell=True, check=True)
     print(f"[DEBUG] Updated Makefile to use {source_path_in_makefile}")
@@ -98,7 +98,7 @@ def run_executable_cli(current_rows, current_cols, matrix_file_path_for_exe):
         return None
 
 def run_scalability_experiment(source_file_name_only, current_matrix_size, thread_count, priority_val, alpha_val, beta_val):
-    source_file_full_path = os.path.abspath(os.path.join(parqr_root_dir, "src", source_file_name_only))
+    source_file_full_path = os.path.abspath(os.path.join(parqr_root_dir, source_file_name_only))
 
     update_makefile(source_file_name_only)
     update_cpp_macro(source_file_full_path, "NUM_THREADS", thread_count)
