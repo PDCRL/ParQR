@@ -36,7 +36,7 @@ def generate_matrix_if_needed(rows, cols, filepath, force_regenerate=False):
 fixed_matrix_size = 8192
 runs_per_config = 3
 base_testcase_folder = "../testcase" # Relative to this script's location
-executable_name = "./a.out"        # Relative to this script's location
+executable_name = "../a.out"        # Relative to this script's location
 makefile_name = "../Makefile"        # Relative to this script's location
 parqr_root_dir = ".."                # Path to ParQR root from script's location
 
