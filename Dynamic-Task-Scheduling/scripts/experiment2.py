@@ -37,7 +37,7 @@ matrix_sizes_to_test = [300, 2400, 4800, 7200, 10800]
 fixed_thread_counts = [26, 52]
 runs_per_config = 3
 base_testcase_folder = "../testcase" # Relative to this script's location
-executable_name = "../bin/QR"        # Relative to this script's location
+executable_name = "./a.out"        # Relative to this script's location
 makefile_name = "../Makefile"        # Relative to this script's location
 parqr_root_dir = ".."                # Path to ParQR root from script's location
 
