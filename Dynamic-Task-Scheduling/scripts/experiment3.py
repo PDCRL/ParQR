@@ -55,10 +55,10 @@ thread_configs_for_fig5_plot = [4, 24, 44, 64, 84, 100]
 ALPHA_BETA_CONFIGS = {
     "intel_32_np": {"alpha": 32, "beta": 32, "prio": 0, "source_file": "intel.cpp", "label": "Intel 32,32 (no prio)", "method_label": "Without Priority (32,32)"},
     "intel_32_wp": {"alpha": 32, "beta": 32, "prio": 1, "source_file": "intel.cpp", "label": "Intel 32,32 (with prio)", "method_label": "With Priority (32,32)"},
-    "intel_16_np": {"alpha": 16, "beta": 16, "prio": 0, "source_file": "intel.cpp", "label": "Intel 16,16 (no prio)", "method_label": "Without Priority (16,16)"},
-    "intel_16_wp": {"alpha": 16, "beta": 16, "prio": 1, "source_file": "intel.cpp", "label": "Intel 16,16 (with prio)", "method_label": "With Priority (16,16)"},
+    #"intel_16_np": {"alpha": 16, "beta": 16, "prio": 0, "source_file": "intel.cpp", "label": "Intel 16,16 (no prio)", "method_label": "Without Priority (16,16)"},
+    #"intel_16_wp": {"alpha": 16, "beta": 16, "prio": 1, "source_file": "intel.cpp", "label": "Intel 16,16 (with prio)", "method_label": "With Priority (16,16)"},
     "barrier_32":  {"alpha": 32, "beta": 32, "prio": None, "source_file": "barrier_main.cpp", "label": "Barrier 32,32", "method_label": "Barrier (32,32)"},
-    "barrier_16":  {"alpha": 16, "beta": 16, "prio": None, "source_file": "barrier_main.cpp", "label": "Barrier 16,16", "method_label": "Barrier (16,16)"},
+    #"barrier_16":  {"alpha": 16, "beta": 16, "prio": None, "source_file": "barrier_main.cpp", "label": "Barrier 16,16", "method_label": "Barrier (16,16)"},
     # --- ADD OPTIMAL CONFIGS HERE IF DIFFERENT FOR FIG 5 ---
     # Example for optimal values from Exp 4.2 (Parameter Tuning)
     # "intel_optimal_np": {"alpha": 12, "beta": 12, "prio": 0, "source_file": "intel.cpp", "label": "Intel Optimal (no prio)", "method_label": "Without Priority (Optimal)"},
