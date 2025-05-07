@@ -61,7 +61,7 @@ ALPHA_BETA_BARRIER = {"alpha": 12, "beta": 12} # VERIFY THIS CHOICE for Barrier
 # Helper Functions
 # ------------------------------------------------------------------------------
 def update_makefile(abs_makefile_path, source_file_name_only):
-    source_path_in_makefile = f"src/{source_file_name_only}" # Assumes Makefile expects src/file.cpp
+    source_path_in_makefile = f"{source_file_name_only}" # Assumes Makefile expects src/file.cpp
     cmd = f"sed -i 's|^MAIN_SRC * =.*|MAIN_SRC = {source_path_in_makefile}|' {abs_makefile_path}"
     subprocess.run(cmd, shell=True, check=True)
     print(f"[DEBUG] Updated Makefile ({abs_makefile_path}) to use {source_path_in_makefile}")
@@ -126,7 +126,7 @@ def run_executable_cli(abs_parqr_root_dir, current_rows, current_cols, matrix_fi
 def run_scalability_experiment(abs_parqr_root_dir, abs_makefile_path, source_file_name_only, 
                                current_matrix_size, thread_count, priority_val, alpha_val, beta_val):
     # Path to the specific C++ source file (e.g., intel.cpp, barrier_main.cpp)
-    abs_source_file_path = os.path.join(abs_parqr_root_dir, "src", source_file_name_only)
+    abs_source_file_path = os.path.join(abs_parqr_root_dir, source_file_name_only)
 
     update_makefile(abs_makefile_path, source_file_name_only)
     update_cpp_macro(abs_source_file_path, "NUM_THREADS", thread_count)
